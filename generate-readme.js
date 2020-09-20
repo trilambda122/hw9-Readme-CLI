@@ -8,18 +8,27 @@ const figlet = require('figlet');
 
 // setup for write file
 const writeFileAsync = util.promisify(fs.writeFile);
-
 // set up global vars
 let username = '';
+let screenShotDir = ''
 let data = [];
+let screenShotFiles = [];
+
 
 // get username from CLI, if none is given print useage and exit
 function getUsername() {
     if (process.argv[2]) {
         return process.argv[2];
     }
-    console.log(chalk.red("ERROR useage: node <script> <github username>"));
+    console.log(chalk.red("ERROR useage: node <script> <github username> <directory of screenshots>"));
     process.exit();
+}
+// get the optional screen shot directory if supplied, if not just return
+function getDir() {
+    if (process.argv[3]) {
+        return process.argv[3];
+    }
+    return
 }
 
 //  perform axios api call to get the githu repos for the user specificed in the CLI args
@@ -27,7 +36,32 @@ function getRepos(user) {
     return ax.get(`https://api.github.com/users/${user}/repos`);
 }
 
+// check file extentions using Regex for jpeg png and gifs types
+function checkForImageFiles(fileNames) {
+    images = [];
+    fileNames.forEach(function(file) {
+        if (file.match(/[^/]+(jpg|png|gif)$/)) {
+            images.push(file);
+        }
+    });
+    return images;
+}
 
+//create a string snippet in the format of and image tag for markdown
+function createScreenShotCodeBlock(fileNames) {
+    let imageTextBlock = '';
+    shot = 1;
+    fileNames.forEach(function(file) {
+        file = file.replace(/ /g, "%20");
+        imageTextBlock += ('*SCREEN SHOT ' + shot + '*');
+        imageTextBlock += ('![screenshot](' + screenShotDir + '/' + file + ')');
+        imageTextBlock += ('\n');
+
+        shot++;
+    });
+    return imageTextBlock;
+
+}
 // function that has all the inquirer questions. 
 function askQuestions() {
 
@@ -103,6 +137,11 @@ function askQuestions() {
             name: 'questions',
             message: 'Please enter a email address for questions and feedback',
             default: ''
+        },
+        {
+            type: 'checkbox',
+            name: 'screenshots',
+            choices: screenShotFiles
         }
 
     ]);
@@ -132,6 +171,8 @@ function generateReadme(answers) {
 [Tests](#Tests)...
 
 [Questions](#Questions)...
+
+[Application Screen Shots](#ScreenShots)...
 
 ---
 ## Description
@@ -167,6 +208,13 @@ Github profile can be found here:  http://github.com/${username}
 
 Please direct any additonal questions to: ${answers.questions}
 
+---
+## ScreenShots
+
+${screenShotsText}
+
+
+
 `
 }
 
@@ -177,14 +225,25 @@ async function init() {
 
     try {
         // get username from CLI and query github for all the repos that belong to the user
-        username = getUsername();
+        // get optional directory where screen shots could be stored
         console.log(chalk.yellow(figlet.textSync('GENERATE README', { horizontalLayout: 'default', width: 80, whitespaceBreak: true })));
+        username = getUsername();
+        screenShotDir = getDir();
         const repos = await getRepos(username);
         data = repos.data;
 
 
-        // prompt user with quesitons
+        // check if supplied screen shot directory exists. if so then return all the image file names in the directory 
+        if (fs.existsSync(screenShotDir)) {
+            screenShotFiles = checkForImageFiles(fs.readdirSync(screenShotDir));
+
+        }
+
+        // prompt user with the quesitons
         const answers = await askQuestions();
+        // create the text block for appending images in markdown
+        screenShotsText = createScreenShotCodeBlock(answers.screenshots);;
+
 
         // create a var for  readmefile from the user answers provided, now stored inthe array answers
         //  put some code here to deal with the license in the readme.
