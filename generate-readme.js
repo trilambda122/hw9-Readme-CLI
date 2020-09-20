@@ -18,7 +18,7 @@ function getUsername() {
     if (process.argv[2]) {
         return process.argv[2];
     }
-    console.log("ERROR useage: node <script> <username>");
+    console.log(chalk.red("ERROR useage: node <script> <username>"));
     process.exit();
 }
 
