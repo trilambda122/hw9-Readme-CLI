@@ -1,20 +1,51 @@
+// set up all the modules
 const inquirer = require('inquirer');
 const fs = require('fs');
 const util = require('util');
+const ax = require('axios');
+const chalk = require('chalk');
+const figlet = require('figlet');
+// const { get } = require('https');
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
+// set up global vars
+let username = '';
+let data = [];
+
+// get username from CLI, if none is given print useage and exit
+function getUsername() {
+    if (process.argv[2]) {
+        return process.argv[2];
+    }
+    console.log("ERROR useage: node <script> <username>");
+    process.exit();
+}
+
+//  perform axios api call to get the githu repos for the user specificed in the CLI args
+function getRepos(user) {
+    return ax.get(`https://api.github.com/users/${user}/repos`);
+}
+
+
+// function that has all the inquirer questions. 
 function askQuestions() {
 
     return inquirer.prompt([{
+            type: 'list',
+            name: 'repo',
+            message: 'Please pick a repo you want to create a readme for ',
+            choices: data //uses the array returned from github API call. 
+        },
+        {
             type: 'input',
             name: 'title',
-            message: 'Project Title: ',
+            message: 'Please enter a project title: ',
             default: ''
         },
 
         {
-            type: 'input',
+            type: 'editor',
             name: 'description',
             message: 'Project description: ',
             default: ''
@@ -63,13 +94,15 @@ function askQuestions() {
     ]);
 
 }
-
+// string literal of the readme template. 
 function generateReadme(answers) {
     return `
     
 [![Generic badge](https://img.shields.io/static/v1?label=license&message=${answers.license.replace(/ /g,"%20")}&color=green&style=for-the-badge)](https://shields.io/) 
 # Project name : ${answers.title.toUpperCase()}
 
+[${answers.repo}](https://github.com/${username}/${answers.repo})
+---
 ## Table of Contents
 
 [Description](#description)...
@@ -115,31 +148,44 @@ ${answers.test}
 
 ---
 ## Questions
-${answers.description}
+http://github.com/${username}
+
+${answers.questions}
 
 `
-
-
 }
 
 
 
-
+// initalize function for the script 
 async function init() {
-    console.log("starting the init function");
+
     try {
+        // get username from CLI and query github for all the repos that belong to the user
+        username = getUsername();
+        console.log(chalk.yellow(figlet.textSync('GENERATE-README', { horizontalLayout: 'full' })));
+        const repos = await getRepos(username);
+        data = repos.data;
+
+        // prompt user with quesitons
         const answers = await askQuestions();
-
+        // create a var for  readmefile from the user answers provided, now stored inthe array answers
         const text = generateReadme(answers)
-
+            // write the file using the text var
         await writeFileAsync('readme.md', text);
 
     } catch (error) {
-        console.log(error);
+        if (error.response.status === 404) {
+            console.log(chalk.red(`USER NOT FOUND: ${error.response.status}/${error.response.statusText}`));
+        } else { console.log(error); }
+
+
+
+
 
 
     }
 
 }
-
+// call the init function to start the script. 
 init();
