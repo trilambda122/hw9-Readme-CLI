@@ -5,8 +5,8 @@ const util = require('util');
 const ax = require('axios');
 const chalk = require('chalk');
 const figlet = require('figlet');
-// const { get } = require('https');
 
+// setup for write file
 const writeFileAsync = util.promisify(fs.writeFile);
 
 // set up global vars
@@ -18,7 +18,7 @@ function getUsername() {
     if (process.argv[2]) {
         return process.argv[2];
     }
-    console.log(chalk.red("ERROR useage: node <script> <username>"));
+    console.log(chalk.red("ERROR useage: node <script> <github username>"));
     process.exit();
 }
 
@@ -61,7 +61,21 @@ function askQuestions() {
             type: 'list',
             name: 'license',
             message: 'What type of License do you want to use',
-            choices: ['MIT', 'GNU', "MPL 2.0", "Apache 2.0", "GPL 3.0"]
+            choices: ['Apache License 2.0',
+                'GNU General Public License v3.0',
+                'MIT License',
+                'BSD 2-Clause "Simplified" License',
+                'BSD 3-Clause "New" or "Revised" License',
+                'Boost Software License 1.0',
+                'Creative Commons Zero v1.0 Universal',
+                'Eclipse Public License 2.0',
+                'GNU Affero General Public License v3.0',
+                'GNU General Public License v2.0',
+                'GNU Lesser General Public License v2.1',
+                'Mozilla Public License 2.0',
+                'The Unlicense'
+            ]
+
         },
 
         {
@@ -134,8 +148,8 @@ ${answers.useage}
 
 ---
 ## License
-
-${answers.license}
+NOTICE This application is covered under ${answers.license} license.
+Please see license.md file for more information 
 
 ---
 ## Contribitors 
@@ -148,9 +162,10 @@ ${answers.test}
 
 ---
 ## Questions
-http://github.com/${username}
 
-${answers.questions}
+Github profile can be found here:  http://github.com/${username}
+
+Please direct any additonal questions to: ${answers.questions}
 
 `
 }
@@ -163,15 +178,18 @@ async function init() {
     try {
         // get username from CLI and query github for all the repos that belong to the user
         username = getUsername();
-        console.log(chalk.yellow(figlet.textSync('GENERATE-README', { horizontalLayout: 'full' })));
+        console.log(chalk.yellow(figlet.textSync('GENERATE README', { horizontalLayout: 'default', width: 80, whitespaceBreak: true })));
         const repos = await getRepos(username);
         data = repos.data;
 
         // prompt user with quesitons
         const answers = await askQuestions();
+
         // create a var for  readmefile from the user answers provided, now stored inthe array answers
+        //  put some code here to deal with the license in the readme.
         const text = generateReadme(answers)
-            // write the file using the text var
+
+        // write the file using the text var
         await writeFileAsync('readme.md', text);
 
     } catch (error) {
@@ -187,5 +205,6 @@ async function init() {
     }
 
 }
+
 // call the init function to start the script. 
 init();
